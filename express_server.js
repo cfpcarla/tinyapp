@@ -3,6 +3,7 @@ const app = express();
 const PORT = 8080;
 const cookieParser = require('cookie-parser');
 app.use(cookieParser());
+const bcrypt = require('bcrypt');
 
 app.set("view engine", "ejs");
 
@@ -134,7 +135,7 @@ app.post('/login', (request, response) => {
     response.statusCode = 403;
     response.end("403 Forbidden. E-mail cannot be found");
   }
-  if (foundUser.password !== password) {
+  if (bcrypt.compareSync(password,foundUser.password)) {
     response.statusCode = 403;
     response.end("403 Forbidden. Wrong password");
   }
@@ -166,6 +167,7 @@ const findUserByEmail = function(email) {
 app.post('/register', (request, response) => {
   const email = request.body.email;
   const password = request.body.password;
+  const hashedPassword = bcrypt.hashSync(password, 10);
   //check empty values
   if  (email === "" || password === "") {
     response.statusCode = 400;
@@ -181,7 +183,7 @@ app.post('/register', (request, response) => {
   const newUser = {
     id: id,
     email: email,
-    password: password
+    password: hashedPassword
   };
   users[id] = newUser;
   response.cookie('user_id', id);
