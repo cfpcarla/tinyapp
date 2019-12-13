@@ -1,17 +1,22 @@
 const express = require("express");
 const app = express();
 const PORT = 8080;
-const cookieParser = require('cookie-parser');
-app.use(cookieParser());
 const bcrypt = require('bcrypt');
+const cookieSession = require('cookie-session');
 
 app.set("view engine", "ejs");
 
+app.use(cookieSession({
+  name: 'session',
+  keys: ['pipoca'],
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+}));
+
 const users = {
-  "userRandomID": {
-    id: "userRandomID",
-    email: "user@example.com",
-    password: "purple-monkey-dinosaur"
+  "abcde": {
+    id: "abcde",
+    email: "cfpcarla@gmail.com",
+    password: "123qwe"
   },
   "user2RandomID": {
     id: "user2RandomID",
@@ -62,23 +67,24 @@ app.get("/fetch", (request, res) => {
 });
 
 app.get("/urls", (request, res) => {
-  let templateVars = { urls: urlsForUser(request.cookies["user_id"]), user:users[request.cookies["user_id"]]};
+  let templateVars = { urls: urlsForUser(request.session.user_id), user: users[request.session.user_id] };
 
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (request, res) => {
-  const user = request.cookies["user_id"];
+  const user = request.session.user_id;
   if (!user) {
     res.redirect('/login');
   } else {
-    let templateVars = { urls: urlsForUser(request.cookies["user_id"]), user:users[request.cookies["user_id"]]};
+    let templateVars = { urls: urlsForUser(request.session.user_id), user: users[request.session.user_id] };
     res.render("urls_new", templateVars);
   }
 });
 
 app.get("/urls/:shortURL", (request, res) => {
-  let templateVars = { shortURL: request.params.shortURL, longURL: request.params.longURL, user:users[request.cookies["user_id"]]};  res.render("urls_show", templateVars);
+  let templateVars = { shortURL: request.params.shortURL, longURL: request.params.longURL, user: users[request.session.user_id] };
+  res.render("urls_show", templateVars);
 });
 
 const bodyParser = require("body-parser");
@@ -94,12 +100,11 @@ app.post("/urls", (request, res) => {
   console.log(request.body);  // Log the POST request body to the console
   const shortURL = generateRandomString();
   const longURL = request.body.longURL;
-  const userID = request.cookies["user_id"];
+  const userID = request.session.user_id;
   urlDatabase[shortURL] = { longURL: longURL, userID: userID };
   console.log(urlDatabase);
   res.redirect('/urls');
 });
-
 
 app.get("/u/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
@@ -119,7 +124,7 @@ app.post('/urls/:shortURL/delete', (request, res) => {
 app.post('/urls/:shortURL/edit', (request, res) => {
   const shortURL = request.params.shortURL;
   const longURL = request.body.longURL;
-  const userID = request.cookies["user_id"];
+  const userID = request.session.user_id;
   urlDatabase[shortURL] = { longURL: longURL, userID: userID };
   res.redirect('/urls');
 });
@@ -140,17 +145,21 @@ app.post('/login', (request, response) => {
     response.end("403 Forbidden. Wrong password");
   }
 
-  response.cookie('user_id', foundUser.id);
+  request.session.user_id = foundUser.id;
   response.redirect('/urls');
 });
 
 app.post('/logout', (request, response) => {
-  response.clearCookie('user_id');
+  console.log(request.session);
+  request.session.user_id = null;
+  console.log("post cleaning ", request.session)
   response.redirect('/urls');
 });
 
 app.get('/register', (request, response) => {
-  let templateVars = { urls:urlsForUser(request.cookies["user_id"]), user: users[request.cookies["user_id"]]};
+  console.log("IN THE GET")
+  console.log(request.session)
+  let templateVars = { urls: urlsForUser(request.session.user_id), user: users[request.session.user_id] };
   response.render("registration", templateVars);
 });
 
@@ -186,13 +195,11 @@ app.post('/register', (request, response) => {
     password: hashedPassword
   };
   users[id] = newUser;
-  response.cookie('user_id', id);
-  console.log(users);
+  request.session.user_id = id;
   response.redirect('/urls');
-
 });
 
 app.get('/login', (request, response) => {
-  let templateVars = { urls: urlsForUser(request.cookies["user_id"]), user:users[request.cookies["user_id"]]};
+  let templateVars = { urls: urlsForUser(request.session.user_id), user: users[request.session.user_id]};
   response.render("login", templateVars);
 });
