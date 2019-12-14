@@ -3,6 +3,7 @@ const app = express();
 const PORT = 8080;
 const bcrypt = require('bcrypt');
 const cookieSession = require('cookie-session');
+const helper = require("./helper");
 
 app.set("view engine", "ejs");
 
@@ -13,15 +14,10 @@ app.use(cookieSession({
 }));
 
 const users = {
-  "abcde": {
-    id: "abcde",
+  "myuser": {
+    id: "myuser",
     email: "cfpcarla@gmail.com",
-    password: "123qwe"
-  },
-  "user2RandomID": {
-    id: "user2RandomID",
-    email: "user2@example.com",
-    password: "dishwasher-funk"
+    password: bcrypt.hashSync("123", 10)
   }
 };
 
@@ -132,46 +128,38 @@ app.post('/urls/:shortURL/edit', (request, res) => {
 // request is what the user sent to the server (when clicking the login button, for example)
 // response is what the server will send back to the user: send the user to another page, for example
 app.post('/login', (request, response) => {
+  console.log(users);
   const email = request.body.email;
   const password = request.body.password;
 
-  const foundUser = findUserByEmail(email);
+  const foundUser = helper.findUserByEmail(email, users);
   if  (!foundUser) {
     response.statusCode = 403;
     response.end("403 Forbidden. E-mail cannot be found");
   }
-  if (bcrypt.compareSync(password,foundUser.password)) {
+  if (!bcrypt.compareSync(password, foundUser.password)) {
     response.statusCode = 403;
     response.end("403 Forbidden. Wrong password");
   }
 
+  // eslint-disable-next-line camelcase
   request.session.user_id = foundUser.id;
   response.redirect('/urls');
 });
 
 app.post('/logout', (request, response) => {
-  console.log(request.session);
+  // eslint-disable-next-line camelcase
   request.session.user_id = null;
-  console.log("post cleaning ", request.session)
   response.redirect('/urls');
 });
 
 app.get('/register', (request, response) => {
-  console.log("IN THE GET")
-  console.log(request.session)
+  console.log("IN THE GET");
+  console.log(request.session);
   let templateVars = { urls: urlsForUser(request.session.user_id), user: users[request.session.user_id] };
   response.render("registration", templateVars);
 });
 
-const findUserByEmail = function(email) {
-  let ids = Object.keys(users);
-  for (let id of ids) {
-    if (users[id].email === email) {
-      return users[id];
-    }
-  }
-  return null;
-};
 
 app.post('/register', (request, response) => {
   const email = request.body.email;
@@ -184,7 +172,7 @@ app.post('/register', (request, response) => {
   }
 
   //check for existing email
-  if (findUserByEmail(email)) {
+  if (helper.findUserByEmail(email, users)) {
     response.statusCode = 400;
     response.end("400 Bad request. Email already registered");
   }
@@ -195,6 +183,7 @@ app.post('/register', (request, response) => {
     password: hashedPassword
   };
   users[id] = newUser;
+  // eslint-disable-next-line camelcase
   request.session.user_id = id;
   response.redirect('/urls');
 });
@@ -203,3 +192,4 @@ app.get('/login', (request, response) => {
   let templateVars = { urls: urlsForUser(request.session.user_id), user: users[request.session.user_id]};
   response.render("login", templateVars);
 });
+
