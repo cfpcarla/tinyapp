@@ -1,6 +1,6 @@
 const { assert } = require('chai');
 
-const { getUserByEmail } = require('../helpers.js');
+const { findUserByEmail } = require('../helper.js');
 
 const testUsers = {
   "userRandomID": {
@@ -15,10 +15,16 @@ const testUsers = {
   }
 };
 
-describe('getUserByEmail', function() {
+describe('findUserByEmail', function() {
   it('should return a user with valid email', function() {
-    const user = getUserByEmail("user@example.com", users);
+    const user = findUserByEmail("user@example.com", testUsers);
     const expectedOutput = "userRandomID";
-    // Write your assert statement here
+    assert.equal(user.id, expectedOutput);
+  });
+
+  it('should return null with invalid email', function() {
+    const user = findUserByEmail("invalid@example.com", testUsers);
+    const expectedOutput = null;
+    assert.equal(user, expectedOutput);
   });
 });

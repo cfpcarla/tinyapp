@@ -4,9 +4,10 @@ const PORT = 8080;
 const bcrypt = require('bcrypt');
 const cookieSession = require('cookie-session');
 const helper = require("./helper");
+const bodyParser = require("body-parser");
 
+app.use(bodyParser.urlencoded({extended: true}));
 app.set("view engine", "ejs");
-
 app.use(cookieSession({
   name: 'session',
   keys: ['pipoca'],
@@ -35,6 +36,10 @@ const urlsForUser = function(id) {
     }
   }
   return userURLs;
+};
+
+const generateRandomString = function() {
+  return Math.random().toString(36).substring(6);
 };
 
 app.get("/", (req, res) => {
@@ -79,17 +84,16 @@ app.get("/urls/new", (request, res) => {
 });
 
 app.get("/urls/:shortURL", (request, res) => {
-  let templateVars = { shortURL: request.params.shortURL, longURL: request.params.longURL, user: users[request.session.user_id] };
+  const shortURL = request.params.shortURL;
+  const longURL = urlDatabase[shortURL].longURL;
+  const templateVars = {
+    shortURL: shortURL,
+    longURL: longURL,
+    user: users[request.session.user_id]
+  };
+
   res.render("urls_show", templateVars);
 });
-
-const bodyParser = require("body-parser");
-app.use(bodyParser.urlencoded({extended: true}));
-
-
-const generateRandomString = function() {
-  return Math.random().toString(36).substring(6);
-};
 
 //create new URL
 app.post("/urls", (request, res) => {
@@ -104,7 +108,7 @@ app.post("/urls", (request, res) => {
 
 app.get("/u/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
-  const longURL = urlDatabase[shortURL];
+  const longURL = urlDatabase[shortURL].longURL;
   res.redirect(longURL);
 });
 
@@ -159,7 +163,6 @@ app.get('/register', (request, response) => {
   let templateVars = { urls: urlsForUser(request.session.user_id), user: users[request.session.user_id] };
   response.render("registration", templateVars);
 });
-
 
 app.post('/register', (request, response) => {
   const email = request.body.email;

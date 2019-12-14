@@ -7,21 +7,16 @@
 <body>
   <%- include('partials/_header') %>
 
-  <div class="card text-center">
-      <div class="card-header"></div>
-      <div class="card-body">
-
-        <form method="POST" action="/urls/<%= shortURL %>/edit">
-            <div class="form-group mb-2">
-              <label for="longURL">new URL</label>
-              <input class="form-control" type="text" name="longURL" placeholder="http://" style="width: 300px; margin: 1em">
-              <button type="submit" class="btn btn-primary">Submit</button>
-            </div>
-          </form>
-        <h5 class="card-title">TinyURL for:http://www.lighthouselabs.ca <a href="/u/<%= longURL %>"></a>
-        <p class="card-text">Short URL: http://www.gooogle.com<a href="/u/<%= shortURL %>"><%= shortURL %></a></p>
+  <div class="container">
+    <form method="POST" action="/urls/<%= shortURL %>/edit">
+      <div class="form-group">
+        <label for="longURL">New URL</label>
+        <input class="form-control" type="text" name="longURL" placeholder="http://">
       </div>
-    <div class="card-footer text-muted"></div>
+      <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+    <p>TinyURL for: <a href="<%= longURL %>"><%= longURL %></a></p>
+    <p>Short URL: <a href="/u/<%= shortURL %>" target="_blank"><%= shortURL %></a></p>
   </div>
   <!-- Bootstrap JS -->
   <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
