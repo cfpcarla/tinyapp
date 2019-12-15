@@ -40,14 +40,14 @@ app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
 
-app.get("/urls.json", (request, res) => {
-  res.json(helper.urlsForUser(request.session.user_id, urlDatabase));
+app.get("/urls.json", (request, response) => {
+  response.json(helper.urlsForUser(request.session.user_id, urlDatabase));
 });
 
 app.get("/urls", (request, response) => {
   const user = users[request.session.user_id];
   if (user) {
-    let templateVars = {
+    const templateVars = {
       urls: helper.urlsForUser(request.session.user_id, urlDatabase),
       user: users[request.session.user_id]
     };
@@ -58,16 +58,16 @@ app.get("/urls", (request, response) => {
   }
 });
 
-app.get("/urls/new", (request, res) => {
+app.get("/urls/new", (request, response) => {
   const user = users[request.session.user_id];
   if (!user) {
-    res.redirect('/login');
+    response.redirect('/login');
   } else {
-    let templateVars = {
+    const templateVars = {
       urls: helper.urlsForUser(user.id, urlDatabase),
       user: user
     };
-    res.render("urls_new", templateVars);
+    response.render("urls_new", templateVars);
   }
 });
 
@@ -97,16 +97,22 @@ app.get("/urls/:shortURL", (request, response) => {
 });
 
 //create new URL
-app.post("/urls", (request, res) => {
-  const shortURL = helper.generateRandomString();
-  const longURL = request.body.longURL;
-  const userID = request.session.user_id;
-  urlDatabase[shortURL] = { longURL: longURL, userID: userID };
-  res.redirect(`/urls/${shortURL}`);
+app.post("/urls", (request, response) => {
+  const user = users[request.session.user_id];
+  if (!user) {
+    response.statusCode = 403;
+    response.end("403 Forbidden. Please Login");
+  } else {
+    const shortURL = helper.generateRandomString();
+    const longURL = request.body.longURL;
+    const userID = request.session.user_id;
+    urlDatabase[shortURL] = { longURL: longURL, userID: userID };
+    response.redirect(`/urls/${shortURL}`);
+  }
 });
 
-app.get("/u/:shortURL", (req, response) => {
-  const shortURL = req.params.shortURL;
+app.get("/u/:shortURL", (request, response) => {
+  const shortURL = request.params.shortURL;
   const URL = urlDatabase[shortURL];
   if (URL) {
     const longURL = URL.longURL;
@@ -118,42 +124,58 @@ app.get("/u/:shortURL", (req, response) => {
 });
 
 //Delete
-app.post('/urls/:shortURL/delete', (request, res) => {
+app.post('/urls/:shortURL/delete', (request, response) => {
   const shortURL = request.params.shortURL;
-  delete urlDatabase[shortURL];
-
-  res.redirect('/urls');
+  const URL = urlDatabase[shortURL];
+  const user = users[request.session.user_id];
+  if (!user) {
+    response.statusCode = 403;
+    response.end("403 Forbidden. Please Login");
+  } else if (URL.userID !== user.id) {
+    response.statusCode = 403;
+    response.end("403 Forbidden. URL belongs to another user");
+  } else {
+    delete urlDatabase[shortURL];
+    response.redirect('/urls');
+  }
 });
 
 //Edit
-app.post('/urls/:shortURL/edit', (request, res) => {
+app.post('/urls/:shortURL/edit', (request, response) => {
   const shortURL = request.params.shortURL;
-  const longURL = request.body.longURL;
-  const userID = request.session.user_id;
-  urlDatabase[shortURL] = { longURL: longURL, userID: userID };
-  res.redirect('/urls');
+  const URL = urlDatabase[shortURL];
+  const user = users[request.session.user_id];
+  if (!user) {
+    response.statusCode = 403;
+    response.end("403 Forbidden. Please Login");
+  } else if (URL.userID !== user.id) {
+    response.statusCode = 403;
+    response.end("403 Forbidden. URL belongs to another user");
+  } else {
+    const longURL = request.body.longURL;
+    urlDatabase[shortURL] = { longURL: longURL, userID: user.id };
+    response.redirect('/urls');
+  }
 });
 
 // request is what the user sent to the server (when clicking the login button, for example)
 // response is what the server will send back to the user: send the user to another page, for example
 app.post('/login', (request, response) => {
-  console.log(users);
   const email = request.body.email;
   const password = request.body.password;
-
   const foundUser = helper.findUserByEmail(email, users);
-  if  (!foundUser) {
+
+  if (!foundUser) {
     response.statusCode = 403;
     response.end("403 Forbidden. E-mail cannot be found");
-  }
-  if (!bcrypt.compareSync(password, foundUser.password)) {
+  } else if (!bcrypt.compareSync(password, foundUser.password)) {
     response.statusCode = 403;
     response.end("403 Forbidden. Wrong password");
+  } else {
+    // eslint-disable-next-line camelcase
+    request.session.user_id = foundUser.id;
+    response.redirect('/urls');
   }
-
-  // eslint-disable-next-line camelcase
-  request.session.user_id = foundUser.id;
-  response.redirect('/urls');
 });
 
 app.post('/logout', (request, response) => {
@@ -163,47 +185,47 @@ app.post('/logout', (request, response) => {
 });
 
 app.get('/register', (request, response) => {
-  console.log("IN THE GET");
-  console.log(request.session);
-  let templateVars = {
-    urls: helper.urlsForUser(request.session.user_id, urlDatabase),
-    user: users[request.session.user_id]
-  };
-  response.render("registration", templateVars);
+  const user = users[request.session.user_id];
+  if (user) {
+    response.redirect('/urls');
+  } else {
+    const templateVars = { user: null };
+    response.render("registration", templateVars);
+  }
 });
 
 app.post('/register', (request, response) => {
   const email = request.body.email;
   const password = request.body.password;
   const hashedPassword = bcrypt.hashSync(password, 10);
-  //check empty values
+
   if  (email === "" || password === "") {
     response.statusCode = 400;
     response.end("400 Bad request. Missing email or password");
-  }
-
-  //check for existing email
-  if (helper.findUserByEmail(email, users)) {
+  } else if (helper.findUserByEmail(email, users)) {
     response.statusCode = 400;
     response.end("400 Bad request. Email already registered");
+  } else {
+    const id = helper.generateRandomString();
+    const newUser = {
+      id: id,
+      email: email,
+      password: hashedPassword
+    };
+    users[id] = newUser;
+    // eslint-disable-next-line camelcase
+    request.session.user_id = id;
+    response.redirect('/urls');
   }
-  const id = helper.generateRandomString();
-  const newUser = {
-    id: id,
-    email: email,
-    password: hashedPassword
-  };
-  users[id] = newUser;
-  // eslint-disable-next-line camelcase
-  request.session.user_id = id;
-  response.redirect('/urls');
 });
 
 app.get('/login', (request, response) => {
-  let templateVars = {
-    urls: helper.urlsForUser(request.session.user_id, urlDatabase),
-    user: users[request.session.user_id]
-  };
-  response.render("login", templateVars);
+  const user = users[request.session.user_id];
+  if (user) {
+    response.redirect('/urls');
+  } else {
+    const templateVars = { user: null };
+    response.render("login", templateVars);
+  }
 });
 
