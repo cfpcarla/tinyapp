@@ -4,8 +4,26 @@ TinyApp is a full stack web application built with Node and Express that allows 
 
 ## Final Product
 
-!["screenshot description"](#)
-!["screenshot description"](#)
+### Registration Page
+
+!["Registration page"](https://github.com/cfpcarla/tinyapp/blob/master/views/docs/Register.png?raw=true)
+
+***
+
+### Login Page
+
+!["Login page"](https://github.com/cfpcarla/tinyapp/blob/master/views/docs/login.png?raw=true)
+
+***
+### Create new URL Page
+
+!["create_new_url page"](https://github.com/cfpcarla/tinyapp/blob/master/views/docs/create_new_url.png?raw=true)
+
+***
+### To view your URL Page
+
+!["My_urls page"](https://github.com/cfpcarla/tinyapp/blob/master/views/docs/My_urls.png?raw=true)
+
 
 ## Dependencies
 
