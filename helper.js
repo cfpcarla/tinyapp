@@ -8,5 +8,19 @@ const findUserByEmail = function(email, users) {
   return null;
 };
 
+const urlsForUser = function(id, urlDatabase) {
+  let ids = Object.keys(urlDatabase);
+  let userURLs = {};
+  for (let shortURL of ids) {
+    if (urlDatabase[shortURL].userID === id) {
+      userURLs[shortURL] = urlDatabase[shortURL];
+    }
+  }
+  return userURLs;
+};
 
-module.exports = { findUserByEmail };
+const generateRandomString = function() {
+  return Math.random().toString(36).substring(6);
+};
+
+module.exports = { findUserByEmail, urlsForUser, generateRandomString };

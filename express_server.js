@@ -27,23 +27,13 @@ const urlDatabase = {
   i3BoGr: { longURL: "https://www.google.ca", userID:"aJ48lW"}
 };
 
-const urlsForUser = function(id) {
-  let ids = Object.keys(urlDatabase);
-  let userURLs = {};
-  for (let shortURL of ids) {
-    if (urlDatabase[shortURL].userID === id) {
-      userURLs[shortURL] = urlDatabase[shortURL];
-    }
+app.get("/", (request, response) => {
+  const user = users[request.session.user_id];
+  if (user) {
+    response.redirect('/urls');
+  } else {
+    response.redirect('/login');
   }
-  return userURLs;
-};
-
-const generateRandomString = function() {
-  return Math.random().toString(36).substring(6);
-};
-
-app.get("/", (req, res) => {
-  res.redirect('/urls');
 });
 
 app.listen(PORT, () => {
@@ -51,65 +41,80 @@ app.listen(PORT, () => {
 });
 
 app.get("/urls.json", (request, res) => {
-  res.json(urlsForUser);
+  res.json(helper.urlsForUser(request.session.user_id, urlDatabase));
 });
 
-app.get("/hello", (request, res) => {
-  res.send("<html><body>Hello <b>World</b></body></html>\n");
-});
-
-app.get("/set", (request, res) => {
-  const a = 1;
-  res.send(`a = ${a}`);
-});
-
-app.get("/fetch", (request, res) => {
-  // res.send(`a = ${a}`);
-});
-
-app.get("/urls", (request, res) => {
-  let templateVars = { urls: urlsForUser(request.session.user_id), user: users[request.session.user_id] };
-
-  res.render("urls_index", templateVars);
+app.get("/urls", (request, response) => {
+  const user = users[request.session.user_id];
+  if (user) {
+    let templateVars = {
+      urls: helper.urlsForUser(request.session.user_id, urlDatabase),
+      user: users[request.session.user_id]
+    };
+    response.render("urls_index", templateVars);
+  } else {
+    response.statusCode = 403;
+    response.end("403 Forbidden. Please Login");
+  }
 });
 
 app.get("/urls/new", (request, res) => {
-  const user = request.session.user_id;
+  const user = users[request.session.user_id];
   if (!user) {
     res.redirect('/login');
   } else {
-    let templateVars = { urls: urlsForUser(request.session.user_id), user: users[request.session.user_id] };
+    let templateVars = {
+      urls: helper.urlsForUser(user.id, urlDatabase),
+      user: user
+    };
     res.render("urls_new", templateVars);
   }
 });
 
-app.get("/urls/:shortURL", (request, res) => {
+app.get("/urls/:shortURL", (request, response) => {
+  const user = users[request.session.user_id];
   const shortURL = request.params.shortURL;
-  const longURL = urlDatabase[shortURL].longURL;
-  const templateVars = {
-    shortURL: shortURL,
-    longURL: longURL,
-    user: users[request.session.user_id]
-  };
+  const URL = urlDatabase[shortURL];
+  if (!user) {
+    response.statusCode = 403;
+    response.end("403 Forbidden. Please Login");
+  } else if (!URL) {
+    response.statusCode = 404;
+    response.end("404 Not found.");
+  } else if (URL.userID !== user.id) {
+    response.statusCode = 403;
+    response.end("403 Forbidden. URL belongs to another user");
+  } else {
+    const longURL = URL.longURL;
+    const templateVars = {
+      shortURL: shortURL,
+      longURL: longURL,
+      user: user
+    };
 
-  res.render("urls_show", templateVars);
+    response.render("urls_show", templateVars);
+  }
 });
 
 //create new URL
 app.post("/urls", (request, res) => {
-  console.log(request.body);  // Log the POST request body to the console
-  const shortURL = generateRandomString();
+  const shortURL = helper.generateRandomString();
   const longURL = request.body.longURL;
   const userID = request.session.user_id;
   urlDatabase[shortURL] = { longURL: longURL, userID: userID };
-  console.log(urlDatabase);
-  res.redirect('/urls');
+  res.redirect(`/urls/${shortURL}`);
 });
 
-app.get("/u/:shortURL", (req, res) => {
+app.get("/u/:shortURL", (req, response) => {
   const shortURL = req.params.shortURL;
-  const longURL = urlDatabase[shortURL].longURL;
-  res.redirect(longURL);
+  const URL = urlDatabase[shortURL];
+  if (URL) {
+    const longURL = URL.longURL;
+    response.redirect(longURL);
+  } else {
+    response.statusCode = 404;
+    response.end("404 Not found.");
+  }
 });
 
 //Delete
@@ -154,13 +159,16 @@ app.post('/login', (request, response) => {
 app.post('/logout', (request, response) => {
   // eslint-disable-next-line camelcase
   request.session.user_id = null;
-  response.redirect('/urls');
+  response.redirect('/login');
 });
 
 app.get('/register', (request, response) => {
   console.log("IN THE GET");
   console.log(request.session);
-  let templateVars = { urls: urlsForUser(request.session.user_id), user: users[request.session.user_id] };
+  let templateVars = {
+    urls: helper.urlsForUser(request.session.user_id, urlDatabase),
+    user: users[request.session.user_id]
+  };
   response.render("registration", templateVars);
 });
 
@@ -179,7 +187,7 @@ app.post('/register', (request, response) => {
     response.statusCode = 400;
     response.end("400 Bad request. Email already registered");
   }
-  const id = generateRandomString();
+  const id = helper.generateRandomString();
   const newUser = {
     id: id,
     email: email,
@@ -192,7 +200,10 @@ app.post('/register', (request, response) => {
 });
 
 app.get('/login', (request, response) => {
-  let templateVars = { urls: urlsForUser(request.session.user_id), user: users[request.session.user_id]};
+  let templateVars = {
+    urls: helper.urlsForUser(request.session.user_id, urlDatabase),
+    user: users[request.session.user_id]
+  };
   response.render("login", templateVars);
 });
 

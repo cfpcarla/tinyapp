@@ -1,6 +1,6 @@
 const { assert } = require('chai');
 
-const { findUserByEmail } = require('../helper.js');
+const { findUserByEmail, urlsForUser } = require('../helper.js');
 
 const testUsers = {
   "userRandomID": {
@@ -26,5 +26,33 @@ describe('findUserByEmail', function() {
     const user = findUserByEmail("invalid@example.com", testUsers);
     const expectedOutput = null;
     assert.equal(user, expectedOutput);
+  });
+});
+
+describe('urlsForUser', () => {
+  const urlDatabaseTest = {
+    b6UTxQ: { longURL: "https://www.tsn.ca", userID:"userRandomID"},
+    i3BoGr: { longURL: "https://www.google.ca", userID:"userRandomID"}
+  };
+
+  it('returns urls for a valid user', () => {
+    const urls = urlsForUser('userRandomID', urlDatabaseTest);
+    const expectedOutput = urlDatabaseTest;
+
+    assert.deepEqual(urls, expectedOutput);
+  });
+
+  it('returns an empty object when user has no urls', () => {
+    const urls = urlsForUser('user2RandomID', urlDatabaseTest);
+    const expectedOutput = {};
+
+    assert.deepEqual(urls, expectedOutput);
+  });
+
+  it('returns an empty object when user does not exist', () => {
+    const urls = urlsForUser('nonExistingUser', urlDatabaseTest);
+    const expectedOutput = {};
+
+    assert.deepEqual(urls, expectedOutput);
   });
 });
